@@ -340,8 +340,8 @@ router.post('/updateDataIncommingWAIT', async (req, res) => {
             // F17 = `${data[0]['UserNO']}`;
             F17 = `Thitaree`;
             F20 = ``;
-            F21 = ``;
-            F22 = ``;
+            F21 = `test1`;
+            F22 = `test2`;
 
             if (data[0][`Appearance for rust`] !== undefined) {
                 //
