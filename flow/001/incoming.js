@@ -1,4 +1,5 @@
 const e = require("express");
+var axios = require('axios');
 const express = require("express");
 const router = express.Router();
 let mongodb = require('../../function/mongodb');
@@ -18,7 +19,7 @@ router.post('/getINCOMING', async (req, res) => {
     let ITEMs = await mongodb.find(`master_IC`, `ITEMs`, {});
     let datadb = await mongodb.find(DBNAME, COLECTIONNAME, { $and: [{ MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] }] });
 
-   
+
 
     checkout = check[0]['INCOMMING'];
 
@@ -26,22 +27,22 @@ router.post('/getINCOMING', async (req, res) => {
         for (j = 0; j < ITEMs.length; j++) {
             if (checkout[i]['ITEMs'] === ITEMs[j]['masterID']) {
                 checkout[i]['ITEMsNAME'] = ITEMs[j]['ITEMs'];
-                if(datadb.length>0){
-                    if ((checkout[i]['ITEMsNAME'] in datadb[0]) ) {
-                        checkout[i]['STATE'] = `${datadb[0][checkout[i]['ITEMsNAME']]['status']}` ;
-                    } else{
-                        checkout[i]['STATE'] = '-'; 
+                if (datadb.length > 0) {
+                    if ((checkout[i]['ITEMsNAME'] in datadb[0])) {
+                        checkout[i]['STATE'] = `${datadb[0][checkout[i]['ITEMsNAME']]['status']}`;
+                    } else {
+                        checkout[i]['STATE'] = '-';
                     }
-                                 
-                }else{
+
+                } else {
                     checkout[i]['STATE'] = '-';
                 }
             }
         }
-        
+
     }
 
-    
+
 
     res.json(checkout);
 });
@@ -80,46 +81,79 @@ router.post('/updateDataIncommingGOOD', async (req, res) => {
         output = [{ "status": "ok" }];
 
     } else {
-        let UpdateData = {
-            "MATNR": parseInt(input['MATNR']).toString(),
-            "CHARG": input['CHARG'],
-            "MBLNR": input['MBLNR'],
-            "BWART": input['BWART'],
-            "MENGE": input['MENGE'],
-            "MEINS": input['MEINS'],
-            "MAT_FG": input['MAT_FG'],
-            "KUNNR": input['KUNNR'],
-            "SORTL": input['SORTL'],
-            "NAME1": input['NAME1'],
-            "CUST_LOT": input['CUST_LOT'],
-            "PART_NM": input['PART_NM'],
-            "PART_NO": input['PART_NO'],
-            "PROCESS": input['PROCESS'],
-            "OLDMAT_CP": input['OLDMAT_CP'],
-            "STATUS": input['STATUS'],
-            "UserNO": input['UserNO'],
-            "TS": Date.now()
+
+
+        try {
+            let resp = await axios.post('http://localhost:14110/getINCOMING', {
+                "MATNR": parseInt(input['MATNR']).toString(),
+                "CHARG": input['CHARG'],
+            });
+            // return resp.data;
+            // console.log(resp.data);
+            if (resp.status == 200) {
+                let returnDATA = resp.data;
+                //------------------------------------------------ NEW
+                let checkITEMs = [];
+                if (returnDATA.length > 0) {
+                    for (i = 0; i < returnDATA.length; i++) {
+                        checkITEMs.push({
+                            "ITEMs": returnDATA[i][`ITEMsNAME`],
+                        })
+                    }
+                }
+                //------------------------------------------------ old version
+                let UpdateData = {
+                    "MATNR": parseInt(input['MATNR']).toString(),
+                    "CHARG": input['CHARG'],
+                    "MBLNR": input['MBLNR'],
+                    "BWART": input['BWART'],
+                    "MENGE": input['MENGE'],
+                    "MEINS": input['MEINS'],
+                    "MAT_FG": input['MAT_FG'],
+                    "KUNNR": input['KUNNR'],
+                    "SORTL": input['SORTL'],
+                    "NAME1": input['NAME1'],
+                    "CUST_LOT": input['CUST_LOT'],
+                    "PART_NM": input['PART_NM'],
+                    "PART_NO": input['PART_NO'],
+                    "PROCESS": input['PROCESS'],
+                    "OLDMAT_CP": input['OLDMAT_CP'],
+                    "STATUS": input['STATUS'],
+                    "UserNO": input['UserNO'],
+                    "checkITEMs": checkITEMs,
+                    "TS": Date.now()
+                }
+                let insertMany = await mongodb.insertMany(DBNAME, COLECTIONNAME, [UpdateData]);
+
+                let ITEMsin = `${input['ITEM']}`;
+                let datain = {
+                    "status": input['ITEMstatus'],
+                    "specialAccStatus": input['ITEMspecialAccStatus'],
+                    "specialAccCOMMENT": input['ITEMspecialAccCOMMENT'],
+                    "specialAccPiecesSelected": input['ITEMsPiecesSelected'],
+                    "specialAccPic01": input['ITEMspecialAccPic01'],
+                    "specialAccPic02": input['ITEMspecialAccPic02'],
+                    "specialAccPic03": input['ITEMspecialAccPic03'],
+                    "specialAccPic04": input['ITEMspecialAccPic04'],
+                    "specialAccPic05": input['ITEMspecialAccPic05'],
+                }
+
+                let updv = {};
+                updv[ITEMsin] = datain;
+
+                let upd = await mongodb.update(DBNAME, COLECTIONNAME, { $and: [{ MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] }] }, { $set: updv });
+                output = [{ "status": "ok" }];
+
+                //------------------------------------------------ old version
+            }
+            // console.log(resp.data)s
+        } catch (err) {
+            output = 'error';
         }
-        let insertMany = await mongodb.insertMany(DBNAME, COLECTIONNAME, [UpdateData]);
 
-        let ITEMsin = `${input['ITEM']}`;
-        let datain = {
-            "status": input['ITEMstatus'],
-            "specialAccStatus": input['ITEMspecialAccStatus'],
-            "specialAccCOMMENT": input['ITEMspecialAccCOMMENT'],
-            "specialAccPiecesSelected": input['ITEMsPiecesSelected'],
-            "specialAccPic01": input['ITEMspecialAccPic01'],
-            "specialAccPic02": input['ITEMspecialAccPic02'],
-            "specialAccPic03": input['ITEMspecialAccPic03'],
-            "specialAccPic04": input['ITEMspecialAccPic04'],
-            "specialAccPic05": input['ITEMspecialAccPic05'],
-        }
 
-        let updv = {};
-        updv[ITEMsin] = datain;
 
-        let upd = await mongodb.update(DBNAME, COLECTIONNAME, { $and: [{ MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] }] }, { $set: updv });
-        output = [{ "status": "ok" }];
+
 
 
     }
@@ -127,30 +161,47 @@ router.post('/updateDataIncommingGOOD', async (req, res) => {
 
     let lastcheck = await mongodb.find(DBNAME, COLECTIONNAME, { $and: [{ MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] }] });
 
+    let passtosap = false;
 
-    if (("Appearance for rust" in lastcheck[0]) && ("Appearance for scratch" in lastcheck[0])) {
+    if (lastcheck[0]['checkITEMs'] !== undefined) {
+        let cou = 0;
+        for (i = 0; i < lastcheck[0]['checkITEMs'].length; i++) {
+            if(lastcheck[0]['checkITEMs'][i]['ITEMs'] in lastcheck[0]){
+                cou++;
+            }
+        }
+        if(cou ===  lastcheck[0]['checkITEMs'].length){
+            passtosap = true;
+        }
+    } else {
+        passtosap = ("Appearance for rust" in lastcheck[0]) && ("Appearance for scratch" in lastcheck[0]);
+    }
+
+
+
+    if (passtosap) {
 
         if ((lastcheck[0]['Appearance for rust']['status'] === 'GOOD') && (lastcheck[0]['Appearance for scratch']['status'] === 'GOOD')) {
 
-            request.post(
-                'http://tp-portal.thaiparker.co.th/API_QcReport/ZBAPI_getZPPIN006_IN_BP_GAS',
-                {
-                    json: {
-                        "PERNR_ID": "135026",
-                        "AUARTID": "ZGB1",
-                        "P_MATNR": `0000000000${parseInt(input['MATNR']).toString()}`,
-                        "P_CHARG": `${input['CHARG']}`,
-                        "P_BWART": "321"
-                    }
+            // request.post(
+            //     'http://tp-portal.thaiparker.co.th/API_QcReport/ZBAPI_getZPPIN006_IN_BP_GAS',
+            //     {
+            //         json: {
+            //             "PERNR_ID": "135026",
+            //             "AUARTID": "ZGB1",
+            //             "P_MATNR": `0000000000${parseInt(input['MATNR']).toString()}`,
+            //             "P_CHARG": `${input['CHARG']}`,
+            //             "P_BWART": "321"
+            //         }
 
-                },
-                function (error, response, body) {
-                    if (!error && response.statusCode == 200) {
-                        console.log(body);
-                    }
-                }
-            );
-            console.log('SEND TO SAP')
+            //     },
+            //     function (error, response, body) {
+            //         if (!error && response.statusCode == 200) {
+            //             console.log(body);
+            //         }
+            //     }
+            // );
+            console.log(`SEND TO SAP ${parseInt(input['MATNR']).toString()}-${input['CHARG']}`)
 
         }
 
@@ -195,47 +246,71 @@ router.post('/updateDataIncommingWAIT', async (req, res) => {
 
 
     } else {
-        let UpdateData = {
-            "MATNR": parseInt(input['MATNR']).toString(),
-            "CHARG": input['CHARG'],
-            "MBLNR": input['MBLNR'],
-            "BWART": input['BWART'],
-            "MENGE": input['MENGE'],
-            "MEINS": input['MEINS'],
-            "MAT_FG": input['MAT_FG'],
-            "KUNNR": input['KUNNR'],
-            "SORTL": input['SORTL'],
-            "NAME1": input['NAME1'],
-            "CUST_LOT": input['CUST_LOT'],
-            "PART_NM": input['PART_NM'],
-            "PART_NO": input['PART_NO'],
-            "PROCESS": input['PROCESS'],
-            "OLDMAT_CP": input['OLDMAT_CP'],
-            "STATUS": input['STATUS'],
-            "UserNO": input['UserNO'],
-            "TS": Date.now()
+        try {
+            let resp = await axios.post('http://localhost:14110/getINCOMING', {
+                "MATNR": parseInt(input['MATNR']).toString(),
+                "CHARG": input['CHARG'],
+            });
+            // return resp.data;
+            // console.log(resp.data);
+            if (resp.status == 200) {
+                let returnDATA = resp.data;
+                //------------------------------------------------ NEW
+                let checkITEMs = [];
+                if (returnDATA.length > 0) {
+                    for (i = 0; i < returnDATA.length; i++) {
+                        checkITEMs.push({
+                            "ITEMs": returnDATA[i][`ITEMsNAME`],
+                        })
+                    }
+                }
+                //------------------------------------------------ old version
+                let UpdateData = {
+                    "MATNR": parseInt(input['MATNR']).toString(),
+                    "CHARG": input['CHARG'],
+                    "MBLNR": input['MBLNR'],
+                    "BWART": input['BWART'],
+                    "MENGE": input['MENGE'],
+                    "MEINS": input['MEINS'],
+                    "MAT_FG": input['MAT_FG'],
+                    "KUNNR": input['KUNNR'],
+                    "SORTL": input['SORTL'],
+                    "NAME1": input['NAME1'],
+                    "CUST_LOT": input['CUST_LOT'],
+                    "PART_NM": input['PART_NM'],
+                    "PART_NO": input['PART_NO'],
+                    "PROCESS": input['PROCESS'],
+                    "OLDMAT_CP": input['OLDMAT_CP'],
+                    "STATUS": input['STATUS'],
+                    "UserNO": input['UserNO'],
+                    "TS": Date.now()
+                }
+                let insertMany = await mongodb.insertMany(DBNAME, COLECTIONNAME, [UpdateData]);
+
+                let ITEMsin = `${input['ITEM']}`;
+                let datain = {
+                    "status": input['ITEMstatus'],
+                    "specialAccStatus": input['ITEMspecialAccStatus'],
+                    "specialAccCOMMENT": input['ITEMspecialAccCOMMENT'],
+                    "specialAccPiecesSelected": input['ITEMsPiecesSelected'],
+                    "specialAccPic01": input['ITEMspecialAccPic01'],
+                    "specialAccPic02": input['ITEMspecialAccPic02'],
+                    "specialAccPic03": input['ITEMspecialAccPic03'],
+                    "specialAccPic04": input['ITEMspecialAccPic04'],
+                    "specialAccPic05": input['ITEMspecialAccPic05'],
+                }
+
+                let updv = {};
+                updv[ITEMsin] = datain;
+
+                let upd = await mongodb.update(DBNAME, COLECTIONNAME, { $and: [{ MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] }] }, { $set: updv });
+                output = [{ "status": "ok" }];
+                //------------------------------------------------ old version
+            }
+            // console.log(resp.data)s
+        } catch (err) {
+            output = 'error';
         }
-        let insertMany = await mongodb.insertMany(DBNAME, COLECTIONNAME, [UpdateData]);
-
-        let ITEMsin = `${input['ITEM']}`;
-        let datain = {
-            "status": input['ITEMstatus'],
-            "specialAccStatus": input['ITEMspecialAccStatus'],
-            "specialAccCOMMENT": input['ITEMspecialAccCOMMENT'],
-            "specialAccPiecesSelected": input['ITEMsPiecesSelected'],
-            "specialAccPic01": input['ITEMspecialAccPic01'],
-            "specialAccPic02": input['ITEMspecialAccPic02'],
-            "specialAccPic03": input['ITEMspecialAccPic03'],
-            "specialAccPic04": input['ITEMspecialAccPic04'],
-            "specialAccPic05": input['ITEMspecialAccPic05'],
-        }
-
-        let updv = {};
-        updv[ITEMsin] = datain;
-
-        let upd = await mongodb.update(DBNAME, COLECTIONNAME, { $and: [{ MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] }] }, { $set: updv });
-        output = [{ "status": "ok" }];
-
 
     }
 
@@ -266,14 +341,14 @@ router.post('/updateDataIncommingWAIT', async (req, res) => {
             F17 = `Thitaree`;
             F20 = ``;
 
-            if(data[0][`Appearance for rust`] !== undefined){
+            if (data[0][`Appearance for rust`] !== undefined) {
                 //
-                if(data[0][`Appearance for rust`][`specialAccCOMMENT`] !== ''){
+                if (data[0][`Appearance for rust`][`specialAccCOMMENT`] !== '') {
                     F20 = data[0][`Appearance for rust`][`specialAccCOMMENT`];
                 }
-            }else if(data[0][`Appearance for scratch`] !== undefined){
+            } else if (data[0][`Appearance for scratch`] !== undefined) {
                 //
-                if(data[0][`Appearance for scratch`][`specialAccCOMMENT`] !== ''){
+                if (data[0][`Appearance for scratch`][`specialAccCOMMENT`] !== '') {
                     F20 = data[0][`Appearance for scratch`][`specialAccCOMMENT`];
                 }
 
@@ -323,7 +398,7 @@ router.post('/updateDataIncommingWAIT', async (req, res) => {
 
 
         }
-    }    
+    }
 
     //------------------------<<<
     // output = [{ "status": "ok",}];
@@ -331,17 +406,17 @@ router.post('/updateDataIncommingWAIT', async (req, res) => {
 });
 
 router.post('/updateDataIncommingGOOD_NA', async (req, res) => {
- 
+
     console.log("updateDataIncommingGOOD_NA");
     let input = req.body;
-    
+
     //------------------------>>>
 
     // let output = await mongodb.find(DBNAME, COLECTIONNAME, { "CHARG": input['CHARG'] });
     let datadb = await mongodb.find(DBNAME, COLECTIONNAME, { $and: [{ MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] }] });
     //{ $and: [ { MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] } ] }
     output = [{ "status": "nok" }];
-    
+
     if (datadb.length > 0) {
 
         let ITEMsin = `${input['ITEM']}`;
@@ -369,12 +444,27 @@ router.post('/updateDataIncommingGOOD_NA', async (req, res) => {
 
     }
 
-   
+
 
     let lastcheck = await mongodb.find(DBNAME, COLECTIONNAME, { $and: [{ MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] }] });
 
+    let passtosap = false;
 
-    if (("Appearance for rust" in lastcheck[0]) && ("Appearance for scratch" in lastcheck[0])) {
+    if (lastcheck[0]['checkITEMs'] !== undefined) {
+        let cou = 0;
+        for (i = 0; i < lastcheck[0]['checkITEMs'].length; i++) {
+            if(lastcheck[0]['checkITEMs'][i]['ITEMs'] in lastcheck[0]){
+                cou++;
+            }
+        }
+        if(cou ===  lastcheck[0]['checkITEMs'].length){
+            passtosap = true;
+        }
+    } else {
+        passtosap = ("Appearance for rust" in lastcheck[0]) && ("Appearance for scratch" in lastcheck[0]);
+    }
+
+    if (passtosap) {
 
         if ((lastcheck[0]['Appearance for rust']['status'] === 'GOOD') && (lastcheck[0]['Appearance for scratch']['status'] === 'GOOD')) {
 
@@ -408,7 +498,7 @@ router.post('/updateDataIncommingGOOD_NA', async (req, res) => {
 });
 
 router.post('/updateDataIncommingNOGOOD', async (req, res) => {
- 
+
     // console.log(req.body);
     let input = req.body;
     //------------------------>>>
@@ -442,12 +532,27 @@ router.post('/updateDataIncommingNOGOOD', async (req, res) => {
 
     }
 
-   
+
 
     let lastcheck = await mongodb.find(DBNAME, COLECTIONNAME, { $and: [{ MATNR: parseInt(input['MATNR']).toString() }, { CHARG: input['CHARG'] }] });
 
+    let passtosap = false;
 
-    if (("Appearance for rust" in lastcheck[0]) && ("Appearance for scratch" in lastcheck[0])) {
+    if (lastcheck[0]['checkITEMs'] !== undefined) {
+        let cou = 0;
+        for (i = 0; i < lastcheck[0]['checkITEMs'].length; i++) {
+            if(lastcheck[0]['checkITEMs'][i]['ITEMs'] in lastcheck[0]){
+                cou++;
+            }
+        }
+        if(cou ===  lastcheck[0]['checkITEMs'].length){
+            passtosap = true;
+        }
+    } else {
+        passtosap = ("Appearance for rust" in lastcheck[0]) && ("Appearance for scratch" in lastcheck[0]);
+    }
+
+    if (passtosap) {
 
         if ((lastcheck[0]['Appearance for rust']['status'] === 'GOOD') && (lastcheck[0]['Appearance for scratch']['status'] === 'GOOD')) {
 
