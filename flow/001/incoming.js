@@ -360,22 +360,22 @@ router.post('/updateDataIncommingWAIT', async (req, res) => {
 
             if (data[0][ITEMsinw]['status'].toString() === 'WAIT') {
                 console.log(T1);
-                fq1 = `DELETE FROM [INCOMING-Report].[dbo].[BPGASGW] where T1='${T1}'`
+                fq1 = `DELETE FROM [INCOMING-Report].[dbo].[BPGAS12] where T1='${T1}'`
                 let SEPICstepFQ1 = await mssqlREPORT.qureyR(fq1);
 
-                fq2 = `DELETE FROM [INCOMING-Report].[dbo].[BPGASGWIMG] where T1='${T1}'`
+                fq2 = `DELETE FROM [INCOMING-Report].[dbo].[BPGAS12IMG] where T1='${T1}'`
                 let SEPICstepFQ2 = await mssqlREPORT.qureyR(fq2);
 
                 F18 = data[0][ITEMsinw]['specialAccPiecesSelected'];
 
-                query01 = `INSERT INTO [INCOMING-Report].[dbo].[BPGASGW] (
+                query01 = `INSERT INTO [INCOMING-Report].[dbo].[BPGAS12] (
                         T1,F01,F02,F03,F04,F05,F06,F07,F08,F09,F10,F11,F12,F13,F14,F15,F16,F17,F18,F20) 
                         VALUES 
                         ('${T1}','${F01}','${F02}','${F03}','${F04}','${F05}','${F06}','${F07}','${F08}','${F09}','${F10}','${F11}','${F12}','${F13}','${F14}','${F15}','${F16}','${F17}','${F18}','${F20}')`;
 
                 let SEPICstep01 = await mssqlREPORT.qureyR(query01);
 
-                picqueryINS = `Insert Into [INCOMING-Report].[dbo].[BPGASGWIMG] (T1) VALUES
+                picqueryINS = `Insert Into [INCOMING-Report].[dbo].[BPGAS12IMG] (T1) VALUES
                         ('${T1}') `
 
                 let SEPICstep02 = await mssqlREPORT.qureyR(picqueryINS);
@@ -383,7 +383,7 @@ router.post('/updateDataIncommingWAIT', async (req, res) => {
 
 
 
-                query02 = ` update [INCOMING-Report].[dbo].[BPGASGWIMG]  set 
+                query02 = ` update [INCOMING-Report].[dbo].[BPGAS12IMG]  set 
                         IMG01= '${data[0][ITEMsinw]['specialAccPic01']}',
                         IMG02= '${data[0][ITEMsinw]['specialAccPic02']}',
                         IMG03= '${data[0][ITEMsinw]['specialAccPic03']}',
